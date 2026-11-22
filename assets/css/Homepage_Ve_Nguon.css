@@ -10,7 +10,7 @@
   }
   
   /* Imports and Base Styles */
-  @import url('./File_CSS_chung.css');
+  /* File_CSS_chung.css được nạp bằng thẻ <link> trong HTML (rule import đặt sau :root sẽ bị trình duyệt bỏ qua) */
   
   body {
     background: linear-gradient(to right, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('../img/background-img.png');
@@ -78,7 +78,7 @@
     justify-content: center;
     align-items: center;
     padding: 40px 20px;
-    background: url('../Component/background-img.png');
+    background: linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url('../img/background-img.png') center / cover no-repeat;
     overflow: hidden;
   }
   
@@ -775,3 +775,82 @@ width: 100% !important;
       max-width: 100%;
     }
   }
+
+/* =====================================================================
+   UI/UX refinements (bản Google Sheets) – đặt cuối file để ghi đè an toàn
+   ===================================================================== */
+html { scroll-behavior: smooth; }
+
+/* ---- Banner: cỡ chữ co giãn (trước đây cố định 60px bằng inline-style) ---- */
+body .banner-container { min-height: 100vh; }
+body .banner-container .title { font-size: clamp(2.25rem, 6vw, 3.75rem); }
+body .banner-container .subtitle { font-size: clamp(2.5rem, 6.5vw, 3.75rem); }
+body .banner-container .description { font-size: clamp(0.95rem, 0.9vw + 0.6rem, 1.25rem); line-height: 1.6; }
+.banner-container .button-group { flex-wrap: wrap; }
+.banner-container .button-white { background: rgba(255, 255, 255, 0.85); }
+.banner-container .button:focus-visible,
+.activity-info-button:focus-visible,
+.btn-more:focus-visible,
+.slider-nav:focus-visible,
+.slider-dots .dot:focus-visible { outline: 3px solid #1a73e8; outline-offset: 3px; }
+
+/* ---- Tiêu đề các mục ---- */
+body .homepage-title { font-size: clamp(2.25rem, 6vw, 4.375rem); line-height: 1.15; }
+body .sub-header { text-align: center; font-size: clamp(0.8125rem, 2.4vw, 1.125rem); }
+body .sub-header-wrapper { margin-bottom: 24px; }
+.activities-container + .activities-container { padding-top: 24px; padding-bottom: 24px; }
+
+/* ---- Slider hoạt động: cuộn ngang + snap (thay cho translateX bị lệch khi wrap) ---- */
+.slider-container { position: relative; max-width: var(--max-container); margin: 0 auto; overflow: visible; }
+body .slider-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 20px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 8px 6px 18px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+body .slider-wrapper::-webkit-scrollbar { display: none; }
+body .slider-wrapper > .activity-info { flex: 0 0 auto; max-width: 88vw; scroll-snap-align: start; }
+.slider-nav {
+  display: none;
+  position: absolute;
+  top: 42%;
+  transform: translateY(-50%);
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  background: #fff; color: #8b0000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  font-size: 26px; line-height: 1; cursor: pointer; z-index: 2;
+}
+.slider-nav.prev { left: 4px; }
+.slider-nav.next { right: 4px; }
+.slider-nav:disabled { opacity: 0.35; cursor: default; }
+.slider-container.has-overflow .slider-nav { display: block; }
+.slider-dots { display: none; justify-content: center; gap: 10px; margin: 6px 0 0; }
+.slider-container.has-overflow + .slider-dots { display: flex; }
+.slider-dots .dot { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: #ccc; cursor: pointer; transition: background-color .3s, transform .2s; }
+.slider-dots .dot.active { background: #8b0000; transform: scale(1.2); }
+
+/* ---- Tin Quỹ vinh danh ---- */
+.fund-news-picture-img { display: block; }
+@media (max-width: 768px) {
+  .banner-container .button { width: 100%; max-width: 20rem; }
+  body .sub-header::before, body .sub-header::after { display: none; }
+  .activities-container .homepage-title, .hero-section .homepage-title { display: block; text-align: center; }
+  .hero-section .header { gap: 12px; }
+  .btn-more { float: none; margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html, body .slider-wrapper { scroll-behavior: auto; }
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
