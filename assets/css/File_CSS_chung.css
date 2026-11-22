@@ -743,4 +743,35 @@ body::-webkit-scrollbar-thumb:hover {
       vertical-align: middle;
       margin: 0 10px;
     }
+/* ===== Fix: banner bị navbar đè ===== */
+:root { --nav-h: 80px; } /* giá trị dự phòng, JS bên dưới sẽ cập nhật theo navbar thật */
 
+html { scroll-padding-top: var(--nav-h); } /* bấm anchor cũng không bị navbar che */
+
+body .banner-container {
+  box-sizing: border-box;
+  height: auto;                       /* bỏ height cứng 100vh */
+  min-height: 100vh;
+  min-height: 100svh;                 /* chuẩn hơn trên mobile (thanh địa chỉ) */
+  padding-top: calc(var(--nav-h) + 24px);
+  padding-bottom: 40px;
+  align-items: center;
+}
+
+body .left-content {
+  height: auto;                       /* trước là 70vh, dễ tràn khi màn hình thấp */
+  min-height: 60vh;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+body .event-card,
+body .image-info-no-action { max-height: calc(100svh - var(--nav-h) - 80px); }
+
+@media (max-width: 768px) {
+  body .banner-container {
+    padding-top: calc(var(--nav-h) + 16px);
+    padding-bottom: 30px;
+  }
+  body .left-content { min-height: 0; }
+}
