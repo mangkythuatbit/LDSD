@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải lên file DOCX tin tức</title>
+    <style>
+        :root { --red: #b00000; --red-dark: #8b0000; --line: #e3e3e3; }
+        * { box-sizing: border-box; }
+        body { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; font-family: 'Roboto', Arial, sans-serif; color: #222; background: #fafafa; }
+        h1 { color: var(--red-dark); font-size: 1.6rem; }
+        .hint { color: #666; font-size: .95rem; line-height: 1.6; }
+        .form-container { background: #fff; border: 1px solid var(--line); padding: 20px; border-radius: 10px; }
+        .dropzone { display: block; border: 2px dashed #c9c9c9; border-radius: 10px; padding: 28px 16px; text-align: center; cursor: pointer; transition: .15s; }
+        .dropzone:hover, .dropzone.drag { border-color: var(--red); background: #fff6f6; }
+        .dropzone input { display: none; }
+        .file-name { margin-top: 8px; font-weight: 600; word-break: break-all; }
+        .btn { background: var(--red); color: #fff; border: 0; padding: 11px 18px; border-radius: 8px; cursor: pointer; font-size: 1rem; text-decoration: none; display: inline-block; }
+        .btn:hover { background: var(--red-dark); }
+        .btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .btn.secondary { background: #fff; color: var(--red); border: 1px solid var(--red); }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+        .result { margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; display: none; }
+        .result.err { border-color: #e0a0a0; background: #fff4f4; color: #8b0000; }
+        .meta { line-height: 1.8; }
+        .meta b { display: inline-block; min-width: 90px; }
+    </style>
+</head>
+<body>
+    <h1>Tải lên file DOCX tin tức</h1>
+    <p class="hint">Trang này chạy hoàn toàn trên trình duyệt (không cần máy chủ PHP). Chọn file Word, hệ thống dựng bài viết theo <code>template.html</code>.
+        Bấm <b>Tải bài viết (.html)</b>, rồi đưa file vào thư mục <code>output/</code> của repo (ảnh đã được nhúng sẵn trong file).</p>
+
+    <div class="form-container">
+        <form id="upload-form">
+            <label class="dropzone" id="dropzone" for="docx_file">
+                <div>📄 Kéo thả file <b>.docx</b> vào đây hoặc bấm để chọn</div>
+                <div class="file-name" id="file-name"></div>
+                <input type="file" id="docx_file" accept=".docx" required>
+            </label>
+            <div class="row"><button type="submit" class="btn" id="submit-btn">Tải lên và xử lý</button></div>
+        </form>
+    </div>
+
+    <div class="result" id="result">
+        <h3>Kết quả:</h3>
+        <div id="result-content"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script>
+    (function () {
+        var fileInput = document.getElementById('docx_file');
+        var dz = document.getElementById('dropzone');
+        var resultBox = document.getElementById('result');
+        var resultContent = document.getElementById('result-content');
+        var submitBtn = document.getElementById('submit-btn');
+        var lastBlobUrl = null;
+
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+        function pad(n) { return String(n).padStart(2, '0'); }
+        function today() { var d = new Date(); return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear(); }
+
+        fileInput.addEventListener('change', function () {
+            document.getElementById('file-name').textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+        });
+        ['dragenter', 'dragover'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('drag'); }); });
+        ['dragleave', 'drop'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('drag'); }); });
+        dz.addEventListener('drop', function (e) {
+            if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); }
+        });
+
+        function show(html, isErr) {
+            resultBox.style.display = 'block';
+            resultBox.className = 'result' + (isErr ? ' err' : '');
+            resultContent.innerHTML = html;
+        }
+
+        /** Tách tiêu đề / ngày / chuyên mục như bản PHP (extractMetadata) rồi dựng nội dung bài viết. */
+        function buildArticle(html) {
+            var doc = new DOMParser().parseFromString('<div id="r">' + html + '</div>', 'text/html');
+            var nodes = Array.prototype.slice.call(doc.getElementById('r').children);
+            var meta = { title: '', date: '', category: '' };
+            var parts = [], imgCount = 0, firstDone = false;
+
+            nodes.forEach(function (n) {
+                var text = (n.textContent || '').trim();
+                var hasImg = n.querySelector && n.querySelector('img');
+
+                if (!firstDone && text && !hasImg) {
+                    firstDone = true;
+                    // Giữ đúng thứ tự kiểm tra của bản PHP: tiêu đề -> ngày -> chuyên mục -> (mặc định) tiêu đề
+                    if (/^[\s\d\p{L}]{10,}$/u.test(text) || /THÁNG \d+\/\d+$/i.test(text)) { meta.title = text; return; }
+                    var d = /NGÀY\s+(\d{2}-\d{2}-\d{4}):\s+(.+)/i.exec(text);
+                    if (d) { meta.date = 'Ngày ' + d[1] + ': ' + d[2]; return; }
+                    if (/^(QUỸ|TIN|HOẠT ĐỘNG|CHƯƠNG TRÌNH)/i.test(text)) { meta.category = text; return; }
+                    meta.title = text;      // không khớp mẫu nào -> dùng đoạn đầu làm tiêu đề
+                    return;
+                }
+                if (n.tagName === 'TABLE') {
+                    n.setAttribute('class', 'article-table');
+                    parts.push(n.outerHTML);
+                } else if (hasImg) {
+                    n.querySelectorAll('img').forEach(function (img) {
+                        imgCount++;
+                        var cap = 'Hình ' + imgCount + '. Mô tả ảnh vào đây';
+                        parts.push('<div class="article-image">\n    <img src="' + img.getAttribute('src') + '" alt="' + esc(cap) + '">\n    <div class="article-caption">' + esc(cap) + '</div>\n</div>');
+                    });
+                    var rest = text; if (rest) parts.push('<p>' + esc(rest) + '</p>');
+                } else if (text) {
+                    parts.push('<p>' + esc(text) + '</p>');
+                }
+            });
+
+            if (!meta.category) meta.category = 'Quỹ momo vinh danh anh hùng';
+            if (!meta.date) meta.date = 'Ngày ' + today() + ': Nội dung mẫu';
+            return { meta: meta, content: parts.join('\n') };
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var file = fileInput.files[0];
+            if (!file) return;
+            submitBtn.disabled = true; submitBtn.textContent = 'Đang xử lý…';
+
+            Promise.all([
+                file.arrayBuffer().then(function (ab) { return mammoth.convertToHtml({ arrayBuffer: ab }); }),
+                fetch('./template.html').then(function (r) { if (!r.ok) throw new Error('Không tải được template.html'); return r.text(); })
+            ]).then(function (res) {
+                var art = buildArticle(res[0].value);
+                var out = res[1]
+                    .replace('<!-- ARTICLE_TITLE -->', esc(art.meta.title))
+                    .replace('<!-- ARTICLE_DATE -->', esc(art.meta.date))
+                    .replace('<!-- ARTICLE_CATEGORY -->', esc(art.meta.category))
+                    .replace('<!-- ARTICLE_CONTENT -->', function () { return art.content; });
+
+                if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+                lastBlobUrl = URL.createObjectURL(new Blob([out], { type: 'text/html;charset=utf-8' }));
+                var fname = 'article_' + Date.now() + '.html';
+                show(
+                    '<div class="meta"><div><b>Tiêu đề:</b> ' + esc(art.meta.title || '(không có)') + '</div>' +
+                    '<div><b>Ngày:</b> ' + esc(art.meta.date) + '</div>' +
+                    '<div><b>Chuyên mục:</b> ' + esc(art.meta.category) + '</div></div>' +
+                    '<div class="row"><a class="btn secondary" href="' + lastBlobUrl + '" target="_blank" rel="noopener">Xem bài viết</a>' +
+                    '<a class="btn" href="' + lastBlobUrl + '" download="' + fname + '">Tải bài viết (.html)</a></div>' +
+                    '<p class="hint">Lưu file vào <code>output/' + fname + '</code> trong repo rồi commit để đăng.</p>'
+                );
+            }).catch(function (err) {
+                console.error(err);
+                show('Lỗi: ' + esc(err.message || err), true);
+            }).then(function () {
+                submitBtn.disabled = false; submitBtn.textContent = 'Tải lên và xử lý';
+            });
+        });
+    })();
+    </script>
+</body>
+</html>
