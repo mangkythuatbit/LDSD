@@ -26,9 +26,10 @@
   /* Import Font LostType vào đây */
   @font-face {
     font-family: 'LostType';
-    src: url('./BANKYTHUAT-WEB/ModelViews/Font/LostType2023-Regular.woff2') format('woff2');
-    src: url('./BANKYTHUAT-WEB/ModelViews/Font/LostType2023-Regular.woff') format('woff');
-    src: url('./BANKYTHUAT-WEB/ModelViews/Font/LostType2023-Regular.otf') format('otf');
+      src: url('../../ModelViews/Font/LostType2023-Regular.woff2') format('woff2'),
+         url('../../ModelViews/Font/LostType2023-Regular.woff') format('woff'),
+         url('../../ModelViews/Font/LostType2023-Regular.otf') format('opentype');
+    font-display: swap;
   }
 /* Thuộc tính nút bấm - Viết Bảo */
 .button {
