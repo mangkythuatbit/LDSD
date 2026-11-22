@@ -78,6 +78,9 @@
     base = base || './';
     value = (value || '').trim();
     if (!value) return PLACEHOLDER;
+    // Link chia sẻ Google Drive (file/d/ID/view, open?id=ID, uc?id=ID) -> link ảnh hiển thị được
+    var drive = /drive\.google\.com\/(?:file\/d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([\w-]{10,})/i.exec(value);
+    if (drive) return 'https://drive.google.com/thumbnail?id=' + drive[1] + '&sz=w1600';
     if (/^(https?:)?\/\//i.test(value) || value.indexOf('data:') === 0) return value;
     return base + 'assets/img/' + IMG_FOLDER[table] + '/' + encodeURI(value);
   }
