@@ -167,15 +167,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Load header
-            fetch('./ModelViews/Header_du_an/Header_du_an.html')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('header-container').innerHTML = data;
-                            
+     // Load header
+fetch('./ModelViews/Header_du_an/Header_du_an.html')
+    .then(response => response.text())
+    .then(data => {
+        document.getElementById('header-container').innerHTML = data;
+                
         // Execute navbar initialization code
         initNavbar();
-                })
-                .catch(err => console.error('Không tải được header:', err));
+        syncNavHeight();   // <-- dòng thêm mới
+    })
+    .catch(err => console.error('Không tải được header:', err));
 
             // Load footer
             fetch('./ModelViews/Footer/footer.html')
@@ -361,7 +363,14 @@
             window.addEventListener('load', update);
             update();
         }
-
+function syncNavHeight() {
+    const nav = document.querySelector('#header-container nav, #header-container header, #header-container .navbar');
+    if (nav) {
+        document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
+    }
+}
+window.addEventListener('resize', syncNavHeight);
+window.addEventListener('load', syncNavHeight);
     </script>
 </body>
 
